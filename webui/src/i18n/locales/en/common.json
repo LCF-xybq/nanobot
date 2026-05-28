@@ -64,7 +64,8 @@
       "label": "Language",
       "ariaLabel": "Change language"
     },
-    "apps": "Apps"
+    "apps": "Apps",
+    "algo": "Agri Algo"
   },
   "settings": {
     "backToChat": "Back to chat",

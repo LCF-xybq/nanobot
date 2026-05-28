@@ -243,6 +243,13 @@ class HeartbeatConfig(Base):
     keep_recent_messages: int = 8
 
 
+class AlgoConfig(Base):
+    """Agricultural algorithm service configuration."""
+
+    enabled: bool = False
+    base_url: str = ""
+
+
 class ApiConfig(Base):
     """OpenAI-compatible API server configuration."""
 
@@ -308,6 +315,7 @@ class Config(BaseSettings):
     providers: ProvidersConfig = Field(default_factory=ProvidersConfig)
     api: ApiConfig = Field(default_factory=ApiConfig)
     gateway: GatewayConfig = Field(default_factory=GatewayConfig)
+    algo: AlgoConfig = Field(default_factory=AlgoConfig)
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
     model_presets: dict[str, ModelPresetConfig] = Field(
         default_factory=dict,

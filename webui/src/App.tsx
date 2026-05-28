@@ -7,6 +7,7 @@ import { SessionSearchDialog } from "@/components/SessionSearchDialog";
 import { SettingsView, type SettingsSectionKey } from "@/components/settings/SettingsView";
 import { ThreadShell } from "@/components/thread/ThreadShell";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { AlgoPanel } from "@/components/algo/AlgoPanel";
 
 import { useSessions } from "@/hooks/useSessions";
 import { useDeferredTitleRefresh } from "@/hooks/useDeferredTitleRefresh";
@@ -46,7 +47,7 @@ const SIDEBAR_WIDTH = 272;
 const SIDEBAR_RAIL_WIDTH = 56;
 const TOKEN_REFRESH_MARGIN_MS = 30_000;
 const TOKEN_REFRESH_MIN_DELAY_MS = 5_000;
-type ShellView = "chat" | "settings" | "apps";
+type ShellView = "chat" | "settings" | "apps" | "algo";
 
 function bootstrapTokenExpiresAt(expiresInSeconds: number): number {
   return Date.now() + Math.max(0, expiresInSeconds) * 1000;
@@ -317,7 +318,7 @@ function Shell({
   onLogout: () => void;
 }) {
   const { t, i18n } = useTranslation();
-  const { client } = useClient();
+  const { client, token } = useClient();
   const { theme, toggle } = useTheme();
   const { sessions, loading, refresh, createChat, deleteChat } = useSessions();
   const { state: sidebarState, update: updateSidebarState } =
@@ -602,6 +603,12 @@ function Shell({
     setMobileSidebarOpen(false);
   }, []);
 
+  const onOpenAlgo = useCallback(() => {
+    setSessionSearchOpen(false);
+    setView("algo");
+    setMobileSidebarOpen(false);
+  }, []);
+
   const onBackToChat = useCallback(() => {
     setView("chat");
     setMobileSidebarOpen(false);
@@ -726,6 +733,12 @@ function Shell({
       });
       return;
     }
+    if (view === "algo") {
+      document.title = t("app.documentTitle.chat", {
+        title: "农业算法",
+      });
+      return;
+    }
     document.title = activeSession
       ? t("app.documentTitle.chat", { title: headerTitle })
       : t("app.documentTitle.base");
@@ -744,6 +757,7 @@ function Shell({
     onToggleArchive,
     onOpenSettings,
     onOpenApps,
+    onOpenAlgo,
     onOpenSearch: onOpenSessionSearch,
     activeUtility: view === "apps" ? "apps" as const : null,
     onToggleArchived,
@@ -837,7 +851,7 @@ function Shell({
               hideSidebarToggleOnDesktop
             />
           </div>
-          {view !== "chat" && (
+          {view !== "chat" && view !== "algo" && (
             <div className="absolute inset-0 flex flex-col">
               <SettingsView
                 theme={theme}
@@ -850,6 +864,11 @@ function Shell({
                 onRestart={onRestart}
                 isRestarting={isRestarting}
               />
+            </div>
+          )}
+          {view === "algo" && (
+            <div className="absolute inset-0 flex flex-col">
+              <AlgoPanel token={token} onBack={onBackToChat} />
             </div>
           )}
         </main>

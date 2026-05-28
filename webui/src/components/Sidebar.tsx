@@ -7,6 +7,7 @@ import {
   Settings,
   SquarePen,
   Blocks,
+  Sprout,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -43,6 +44,7 @@ interface SidebarProps {
   onToggleArchive: (key: string) => void;
   onOpenSettings: () => void;
   onOpenApps: () => void;
+  onOpenAlgo: () => void;
   onOpenSearch: () => void;
   activeUtility?: "apps" | null;
   onToggleArchived: () => void;
@@ -138,6 +140,12 @@ export function Sidebar(props: SidebarProps) {
           onClick={props.onOpenApps}
           active={props.activeUtility === "apps"}
           icon={<Blocks className="h-4 w-4" />}
+        />
+        <SidebarActionButton
+          collapsed={collapsed}
+          label={t("sidebar.algo", { defaultValue: "农业算法" })}
+          onClick={props.onOpenAlgo}
+          icon={<Sprout className="h-4 w-4" />}
         />
         <SidebarViewMenu
           compact={collapsed}

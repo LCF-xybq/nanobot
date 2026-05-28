@@ -607,6 +607,23 @@ class WebSocketChannel(BaseChannel):
     def _expected_path(self) -> str:
         return _normalize_config_path(self.config.path)
 
+    def _init_algo_client(self) -> Any:
+        """Create an AlgoClient if the algo config is enabled with a base_url."""
+        try:
+            from nanobot.config.loader import load_config
+            cfg = load_config()
+        except Exception:
+            return None
+        if not cfg.algo.enabled or not cfg.algo.base_url:
+            return None
+        try:
+            from nanobot.algo.client import AlgoClient
+            self.logger.info("Algorithm service enabled: {}", cfg.algo.base_url)
+            return AlgoClient(cfg.algo.base_url)
+        except Exception as e:
+            self.logger.warning("Failed to create AlgoClient: {}", e)
+            return None
+
     def _build_ssl_context(self) -> ssl.SSLContext | None:
         cert = self.config.ssl_certfile.strip()
         key = self.config.ssl_keyfile.strip()
@@ -737,6 +754,13 @@ class WebSocketChannel(BaseChannel):
         mcp_action = _MCP_PRESET_ACTIONS_BY_PATH.get(got)
         if mcp_action is not None:
             return await self._handle_settings_mcp_presets(request, mcp_action)
+
+        # 3b. Algorithm panel API routes.
+        if got.startswith("/api/algo/"):
+            from nanobot.algo.routes import dispatch_algo_route
+            resp = await dispatch_algo_route(self, got, request)
+            if resp is not None:
+                return resp
 
         m = re.match(r"^/api/sessions/([^/]+)/messages$", got)
         if m:
@@ -1345,6 +1369,9 @@ class WebSocketChannel(BaseChannel):
 
         self._running = True
         self._stop_event = asyncio.Event()
+
+        # Initialize algo client if configured
+        self._algo_client = self._init_algo_client()
 
         ssl_context = self._build_ssl_context()
         scheme = "wss" if ssl_context else "ws"
