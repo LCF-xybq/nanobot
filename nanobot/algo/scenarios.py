@@ -6,10 +6,17 @@ from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
+class AlgorithmStep:
+    name: str
+    display_name: str
+
+
+@dataclass(frozen=True)
 class AlgorithmInfo:
     name: str
     display_name: str
     description: str
+    steps: list[AlgorithmStep] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -34,11 +41,28 @@ SCENARIOS: list[Scenario] = [
                 name="daosui",
                 display_name="稻穗检测",
                 description="基于无人机影像的稻穗数量检测算法（RPDA），采用不同型号无人机在不同高度采集的数据训练而来，检测稻穗数量，为产量预测打下基础。",
+                steps=[
+                    AlgorithmStep("image_loader", "ImageLoader"),
+                    AlgorithmStep("preprocess", "Preprocess"),
+                    AlgorithmStep("trt_inference", "TRTInference"),
+                    AlgorithmStep("postprocess", "Postprocess"),
+                    AlgorithmStep("detection_visualizer", "DetectionVisualizer"),
+                    AlgorithmStep("result_saver", "ResultSaver"),
+                    AlgorithmStep("stats_collector", "StatsCollector"),
+                ],
             ),
             AlgorithmInfo(
                 name="yangmiao",
                 display_name="秧苗检测",
                 description="基于无人机影像的秧苗检测算法，采用 SAHI 切片 + TensorRT 推理，检测秧苗数量并计算 ROI 面积（亩），为秧苗长势评估提供数据支撑。",
+                steps=[
+                    AlgorithmStep("geotiff_process", "GeoTIFFProcess"),
+                    AlgorithmStep("sahi_slicing", "SAHISlicing"),
+                    AlgorithmStep("trt_inference", "TRTInference"),
+                    AlgorithmStep("global_nms", "GlobalNMS"),
+                    AlgorithmStep("slice_paste", "SlicePaste"),
+                    AlgorithmStep("shapefile_saving", "ShapefileSaving"),
+                ],
             ),
         ],
     ),
@@ -61,6 +85,14 @@ SCENARIOS: list[Scenario] = [
                 name="qiuchao",
                 display_name="秋草识别",
                 description="通过无人机 RGB 影像快速识别水稻田杂草，提供杂草面积、位置信息作为来年杂草防治的参考。",
+                steps=[
+                    AlgorithmStep("dji_distortion_correct", "DJIDistortionCorrect"),
+                    AlgorithmStep("sahi_slicing", "SAHISlicing"),
+                    AlgorithmStep("trt_inference", "TRTInference"),
+                    AlgorithmStep("slice_paste", "SlicePaste"),
+                    AlgorithmStep("area_calcu", "AreaCalcu"),
+                    AlgorithmStep("stats_collector", "StatsCollector"),
+                ],
             ),
         ],
     ),

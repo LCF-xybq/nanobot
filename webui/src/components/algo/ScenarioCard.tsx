@@ -24,7 +24,7 @@ export function ScenarioCard({ scenario, selected, onClick }: ScenarioCardProps)
         <span className="text-sm font-medium">{scenario.name}</span>
         {scenario.has_algorithms && (
           <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-            {scenario.algorithms.length} 算法
+            {scenario.algorithms.length}应用+{scenario.algorithms.reduce((s, a) => s + (a.steps?.length ?? 0), 0)}算法
           </span>
         )}
       </div>

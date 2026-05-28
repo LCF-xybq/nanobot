@@ -4,10 +4,16 @@
  * Parameters are passed via query string.
  */
 
+export interface AlgorithmStep {
+  name: string;
+  display_name: string;
+}
+
 export interface AlgorithmInfo {
   name: string;
   display_name: string;
   description: string;
+  steps: AlgorithmStep[];
 }
 
 export interface Scenario {

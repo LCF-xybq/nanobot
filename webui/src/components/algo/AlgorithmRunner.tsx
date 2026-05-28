@@ -128,10 +128,10 @@ export function AlgorithmRunner({ algorithms, token }: AlgorithmRunnerProps) {
 
   return (
     <div className="space-y-4">
-      {/* Algorithm tabs */}
+      {/* Application tabs */}
       <div>
         <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-          选择算法
+          选择应用
         </label>
         <div className="flex gap-2">
           {algorithms.map((algo) => (
@@ -160,6 +160,25 @@ export function AlgorithmRunner({ algorithms, token }: AlgorithmRunnerProps) {
           </p>
         )}
       </div>
+
+      {/* Selected algorithm steps */}
+      {selectedAlgo && selectedAlgo.steps && selectedAlgo.steps.length > 0 && (
+        <div>
+          <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+            已选算法
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            {selectedAlgo.steps.map((step) => (
+              <span
+                key={step.name}
+                className="rounded-md border border-primary/20 bg-primary/5 px-2 py-0.5 text-xs text-primary"
+              >
+                {step.display_name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* File selector */}
       {selectedAlgo && (

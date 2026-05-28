@@ -58,7 +58,12 @@ async def handle_scenarios(channel: WebSocketChannel, request: WsRequest) -> Any
             "name": s.name,
             "description": s.description,
             "algorithms": [
-                {"name": a.name, "display_name": a.display_name, "description": a.description}
+                {
+                    "name": a.name,
+                    "display_name": a.display_name,
+                    "description": a.description,
+                    "steps": [{"name": st.name, "display_name": st.display_name} for st in a.steps],
+                }
                 for a in s.algorithms
             ],
             "has_algorithms": s.has_algorithms,
