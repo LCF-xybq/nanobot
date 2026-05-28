@@ -99,3 +99,5 @@ temp/
 *.tmp
 exp/
 .playwright-mcp/
+.claude/
+CLAUDE.md
