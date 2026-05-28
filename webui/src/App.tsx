@@ -7,7 +7,7 @@ import { SessionSearchDialog } from "@/components/SessionSearchDialog";
 import { SettingsView, type SettingsSectionKey } from "@/components/settings/SettingsView";
 import { ThreadShell } from "@/components/thread/ThreadShell";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { AlgoPanel } from "@/components/algo/AlgoPanel";
+import { AgriPanel } from "@/components/agri/AgriPanel";
 
 import { useSessions } from "@/hooks/useSessions";
 import { useDeferredTitleRefresh } from "@/hooks/useDeferredTitleRefresh";
@@ -47,7 +47,7 @@ const SIDEBAR_WIDTH = 272;
 const SIDEBAR_RAIL_WIDTH = 56;
 const TOKEN_REFRESH_MARGIN_MS = 30_000;
 const TOKEN_REFRESH_MIN_DELAY_MS = 5_000;
-type ShellView = "chat" | "settings" | "apps" | "algo";
+type ShellView = "chat" | "settings" | "apps" | "agri";
 
 function bootstrapTokenExpiresAt(expiresInSeconds: number): number {
   return Date.now() + Math.max(0, expiresInSeconds) * 1000;
@@ -603,9 +603,9 @@ function Shell({
     setMobileSidebarOpen(false);
   }, []);
 
-  const onOpenAlgo = useCallback(() => {
+  const onOpenAgri = useCallback(() => {
     setSessionSearchOpen(false);
-    setView("algo");
+    setView("agri");
     setMobileSidebarOpen(false);
   }, []);
 
@@ -733,9 +733,9 @@ function Shell({
       });
       return;
     }
-    if (view === "algo") {
+    if (view === "agri") {
       document.title = t("app.documentTitle.chat", {
-        title: "农业算法",
+        title: "农业应用",
       });
       return;
     }
@@ -757,7 +757,7 @@ function Shell({
     onToggleArchive,
     onOpenSettings,
     onOpenApps,
-    onOpenAlgo,
+    onOpenAgri,
     onOpenSearch: onOpenSessionSearch,
     activeUtility: view === "apps" ? "apps" as const : null,
     onToggleArchived,
@@ -851,7 +851,7 @@ function Shell({
               hideSidebarToggleOnDesktop
             />
           </div>
-          {view !== "chat" && view !== "algo" && (
+          {view !== "chat" && view !== "agri" && (
             <div className="absolute inset-0 flex flex-col">
               <SettingsView
                 theme={theme}
@@ -866,9 +866,9 @@ function Shell({
               />
             </div>
           )}
-          {view === "algo" && (
+          {view === "agri" && (
             <div className="absolute inset-0 flex flex-col">
-              <AlgoPanel token={token} onBack={onBackToChat} />
+              <AgriPanel token={token} onBack={onBackToChat} />
             </div>
           )}
         </main>

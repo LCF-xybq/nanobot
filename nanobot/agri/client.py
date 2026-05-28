@@ -1,4 +1,4 @@
-"""HTTP client for the agricultural algorithm service."""
+"""HTTP client for the agricultural application service."""
 
 from __future__ import annotations
 
@@ -8,14 +8,14 @@ import httpx
 from loguru import logger
 
 
-class AlgoClientError(Exception):
+class AgriClientError(Exception):
     def __init__(self, message: str, status_code: int | None = None):
         super().__init__(message)
         self.status_code = status_code
 
 
-class AlgoClient:
-    """Async client wrapping the 8 algorithm service endpoints."""
+class AgriClient:
+    """Async client wrapping the 8 agricultural service endpoints."""
 
     def __init__(self, base_url: str, timeout: float = 30.0):
         self._base_url = base_url.rstrip("/")
@@ -35,9 +35,9 @@ class AlgoClient:
             resp.raise_for_status()
             return resp.json()
         except httpx.TimeoutException as e:
-            msg = f"Algorithm service timeout: {e}"
+            msg = f"Agricultural service timeout: {e}"
             logger.warning(msg)
-            raise AlgoClientError(msg) from e
+            raise AgriClientError(msg) from e
         except httpx.HTTPStatusError as e:
             detail = ""
             try:
@@ -45,13 +45,13 @@ class AlgoClient:
                 detail = body.get("message", body.get("error", ""))
             except Exception:
                 detail = e.response.text[:200]
-            msg = f"Algorithm service error ({e.response.status_code}): {detail}"
+            msg = f"Agricultural service error ({e.response.status_code}): {detail}"
             logger.warning(msg)
-            raise AlgoClientError(msg, status_code=e.response.status_code) from e
+            raise AgriClientError(msg, status_code=e.response.status_code) from e
         except httpx.RequestError as e:
-            msg = f"Algorithm service unreachable: {e}"
+            msg = f"Agricultural service unreachable: {e}"
             logger.warning(msg)
-            raise AlgoClientError(msg) from e
+            raise AgriClientError(msg) from e
 
     # --- 8 API endpoints ---
 
@@ -78,5 +78,5 @@ class AlgoClient:
     async def stop_service(self, service_name: str) -> dict[str, Any]:
         return await self._request("POST", f"/stop_service/{service_name}")
 
-    async def list_data(self, algo_name: str) -> dict[str, Any]:
-        return await self._request("POST", "/list_data", json_body={"algo_name": algo_name})
+    async def list_data(self, agri_name: str) -> dict[str, Any]:
+        return await self._request("POST", "/list_data", json_body={"algo_name": agri_name})

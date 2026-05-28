@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { TaskInfo } from "@/lib/algo-api";
+import type { TaskInfo } from "@/lib/agri-api";
 
 interface TaskHistoryProps {
   tasks: TaskInfo[];
@@ -42,7 +42,7 @@ export function TaskHistory({ tasks }: TaskHistoryProps) {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b text-left text-xs text-muted-foreground">
-            <th className="pb-2 pr-3 font-medium">算法</th>
+            <th className="pb-2 pr-3 font-medium">应用</th>
             <th className="pb-2 pr-3 font-medium">状态</th>
             <th className="pb-2 pr-3 font-medium">进度</th>
             <th className="pb-2 pr-3 font-medium">开始</th>

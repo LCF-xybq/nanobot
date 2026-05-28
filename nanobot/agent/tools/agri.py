@@ -1,4 +1,4 @@
-"""Agent tool for invoking agricultural algorithms from chat."""
+"""Agent tool for invoking agricultural applications from chat."""
 
 from __future__ import annotations
 
@@ -11,18 +11,18 @@ from nanobot.agent.tools.base import Tool
 from nanobot.agent.tools.schema import StringSchema, tool_parameters_schema
 
 
-class AlgoTool(Tool):
-    """List algorithms, check status, start/stop algorithm tasks, and list data files."""
+class AgriTool(Tool):
+    """Agricultural application tool: manage crop analysis services and tasks."""
 
-    name = "algo"
+    name = "agri"
     description = (
-        "Manage agricultural algorithm tasks. Actions: "
-        "'list' — list all available algorithms; "
-        "'list_data' — list input data files for an algorithm (requires service_name); "
-        "'start' — start an algorithm task (requires service_name and filename); "
-        "'status' — check running task status (requires service_name); "
-        "'task' — check task status by task_id (requires task_id); "
-        "'stop' — stop a running algorithm (requires service_name); "
+        "Manage agricultural application tasks. Actions: "
+        "'list' — list all available services;"
+        "'list_data' — list input data files for an service (requires service_name);"
+        "'start' — start an service task (requires service_name and filename);"
+        "'status' — check running task status (requires service_name);"
+        "'task' — check task status by task_id (requires task_id);"
+        "'stop' — stop a running service (requires service_name); "
         "'tasks' — list all tasks, optionally filtered by service_name."
     )
 
@@ -33,7 +33,7 @@ class AlgoTool(Tool):
             "Action to perform: list, list_data, start, status, task, stop, tasks",
             enum=("list", "list_data", "start", "status", "task", "stop", "tasks"),
         ),
-        service_name=StringSchema("Algorithm service name (e.g. daosui, yangmiao, qiuchao)", nullable=True),
+        service_name=StringSchema("Agricultural application name (e.g. daosui, yangmiao, qiuchao)", nullable=True),
         filename=StringSchema("MinIO data file name (required for 'start')", nullable=True),
         task_id=StringSchema("Task ID (required for 'task')", nullable=True),
         required=["action"],
@@ -51,8 +51,8 @@ class AlgoTool(Tool):
         return cls(base_url=ctx.config.algo.base_url)
 
     def __init__(self, base_url: str):
-        from nanobot.algo.client import AlgoClient
-        self._client = AlgoClient(base_url)
+        from nanobot.agri.client import AgriClient
+        self._client = AgriClient(base_url)
 
     async def execute(
         self,
@@ -109,5 +109,5 @@ class AlgoTool(Tool):
             return f"Error: unknown action '{action}'. Use one of: list, list_data, start, status, task, stop, tasks."
 
         except Exception as e:
-            logger.warning("algo tool error: {}", e)
+            logger.warning("agricultural tool error: {}", e)
             return f"Error: {e}"

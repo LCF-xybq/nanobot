@@ -44,7 +44,7 @@ interface SidebarProps {
   onToggleArchive: (key: string) => void;
   onOpenSettings: () => void;
   onOpenApps: () => void;
-  onOpenAlgo: () => void;
+  onOpenAgri: () => void;
   onOpenSearch: () => void;
   activeUtility?: "apps" | null;
   onToggleArchived: () => void;
@@ -143,8 +143,8 @@ export function Sidebar(props: SidebarProps) {
         />
         <SidebarActionButton
           collapsed={collapsed}
-          label={t("sidebar.algo", { defaultValue: "农业算法" })}
-          onClick={props.onOpenAlgo}
+          label={t("sidebar.agri", { defaultValue: "农业应用" })}
+          onClick={props.onOpenAgri}
           icon={<Sprout className="h-4 w-4" />}
         />
         <SidebarViewMenu

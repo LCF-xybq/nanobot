@@ -244,7 +244,7 @@ class HeartbeatConfig(Base):
 
 
 class AlgoConfig(Base):
-    """Agricultural algorithm service configuration."""
+    """Agricultural application service configuration."""
 
     enabled: bool = False
     base_url: str = ""
@@ -302,6 +302,7 @@ class ToolsConfig(Base):
     image_generation: ImageGenerationToolConfig = Field(
         default_factory=lambda: _lazy_default("nanobot.agent.tools.image_generation", "ImageGenerationToolConfig"),
     )
+    algo: AlgoConfig = Field(default_factory=AlgoConfig)
     restrict_to_workspace: bool = False  # restrict all tool access to workspace directory
     mcp_servers: dict[str, MCPServerConfig] = Field(default_factory=dict)
     ssrf_whitelist: list[str] = Field(default_factory=list)  # CIDR ranges to exempt from SSRF blocking (e.g. ["100.64.0.0/10"] for Tailscale)

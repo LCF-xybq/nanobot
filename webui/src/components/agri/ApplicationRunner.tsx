@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { AlgorithmInfo, DataFile, TaskInfo } from "@/lib/algo-api";
+import type { ApplicationInfo, DataFile, TaskInfo } from "@/lib/agri-api";
 import {
   fetchDataFiles,
   fetchTaskStatus,
   startService,
   stopService,
-} from "@/lib/algo-api";
+} from "@/lib/agri-api";
 
-interface AlgorithmRunnerProps {
-  algorithms: AlgorithmInfo[];
+interface ApplicationRunnerProps {
+  applications: ApplicationInfo[];
   token: string;
 }
 
@@ -30,8 +30,8 @@ function stageLabel(stage: string): string {
   return STAGE_LABELS[stage] ?? stage;
 }
 
-export function AlgorithmRunner({ algorithms, token }: AlgorithmRunnerProps) {
-  const [selectedAlgo, setSelectedAlgo] = useState<AlgorithmInfo | null>(null);
+export function ApplicationRunner({ applications, token }: ApplicationRunnerProps) {
+  const [selectedApp, setSelectedApp] = useState<ApplicationInfo | null>(null);
   const [files, setFiles] = useState<DataFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<string>("");
   const [loadingFiles, setLoadingFiles] = useState(false);
@@ -40,9 +40,9 @@ export function AlgorithmRunner({ algorithms, token }: AlgorithmRunnerProps) {
   const [error, setError] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Load data files when algorithm selected
+  // Load data files when application selected
   useEffect(() => {
-    if (!selectedAlgo) {
+    if (!selectedApp) {
       setFiles([]);
       setSelectedFile("");
       return;
@@ -50,7 +50,7 @@ export function AlgorithmRunner({ algorithms, token }: AlgorithmRunnerProps) {
     let cancelled = false;
     setLoadingFiles(true);
     setError(null);
-    fetchDataFiles(token, selectedAlgo.name)
+    fetchDataFiles(token, selectedApp.name)
       .then((data) => {
         if (!cancelled) setFiles(data);
       })
@@ -63,7 +63,7 @@ export function AlgorithmRunner({ algorithms, token }: AlgorithmRunnerProps) {
     return () => {
       cancelled = true;
     };
-  }, [selectedAlgo, token]);
+  }, [selectedApp, token]);
 
   // Poll active task status
   useEffect(() => {
@@ -92,11 +92,11 @@ export function AlgorithmRunner({ algorithms, token }: AlgorithmRunnerProps) {
   }, [activeTask, token]);
 
   const handleStart = useCallback(async () => {
-    if (!selectedAlgo || !selectedFile) return;
+    if (!selectedApp || !selectedFile) return;
     setStarting(true);
     setError(null);
     try {
-      const result = await startService(token, selectedAlgo.name, selectedFile);
+      const result = await startService(token, selectedApp.name, selectedFile);
       setActiveTask({
         task_id: result.task_id,
         service_name: result.service_name,
@@ -112,16 +112,16 @@ export function AlgorithmRunner({ algorithms, token }: AlgorithmRunnerProps) {
     } finally {
       setStarting(false);
     }
-  }, [selectedAlgo, selectedFile, token]);
+  }, [selectedApp, selectedFile, token]);
 
   const handleStop = useCallback(async () => {
-    if (!selectedAlgo) return;
+    if (!selectedApp) return;
     try {
-      await stopService(token, selectedAlgo.name);
+      await stopService(token, selectedApp.name);
     } catch {
       // Ignore stop errors
     }
-  }, [selectedAlgo, token]);
+  }, [selectedApp, token]);
 
   const isRunning =
     activeTask && ["PENDING", "RUNNING", "RETRYING"].includes(activeTask.status);
@@ -134,41 +134,41 @@ export function AlgorithmRunner({ algorithms, token }: AlgorithmRunnerProps) {
           选择应用
         </label>
         <div className="flex gap-2">
-          {algorithms.map((algo) => (
+          {applications.map((app) => (
             <button
-              key={algo.name}
+              key={app.name}
               type="button"
               onClick={() => {
-                setSelectedAlgo(algo);
+                setSelectedApp(app);
                 setActiveTask(null);
                 setError(null);
               }}
               className={cn(
                 "rounded-lg border px-3 py-1.5 text-sm transition-colors",
-                selectedAlgo?.name === algo.name
+                selectedApp?.name === app.name
                   ? "border-primary/50 bg-primary/10 text-primary font-medium"
                   : "border-border/50 hover:bg-accent/50",
               )}
             >
-              {algo.display_name}
+              {app.display_name}
             </button>
           ))}
         </div>
-        {selectedAlgo && (
+        {selectedApp && (
           <p className="mt-1.5 text-xs text-muted-foreground">
-            {selectedAlgo.description}
+            {selectedApp.description}
           </p>
         )}
       </div>
 
-      {/* Selected algorithm steps */}
-      {selectedAlgo && selectedAlgo.steps && selectedAlgo.steps.length > 0 && (
+      {/* Selected application steps */}
+      {selectedApp && selectedApp.steps && selectedApp.steps.length > 0 && (
         <div>
           <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-            已选算法
+            已选应用
           </label>
           <div className="flex flex-wrap gap-1.5">
-            {selectedAlgo.steps.map((step) => (
+            {selectedApp.steps.map((step) => (
               <span
                 key={step.name}
                 className="rounded-md border border-primary/20 bg-primary/5 px-2 py-0.5 text-xs text-primary"
@@ -181,7 +181,7 @@ export function AlgorithmRunner({ algorithms, token }: AlgorithmRunnerProps) {
       )}
 
       {/* File selector */}
-      {selectedAlgo && (
+      {selectedApp && (
         <div>
           <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
             选择数据文件
@@ -215,14 +215,14 @@ export function AlgorithmRunner({ algorithms, token }: AlgorithmRunnerProps) {
       )}
 
       {/* Action buttons */}
-      {selectedAlgo && (
+      {selectedApp && (
         <div className="flex gap-2">
           <Button
             size="sm"
             disabled={!selectedFile || starting || !!isRunning}
             onClick={handleStart}
           >
-            {starting ? "启动中..." : "启动算法"}
+            {starting ? "启动中..." : "启动应用"}
           </Button>
           {isRunning && (
             <Button size="sm" variant="destructive" onClick={handleStop}>

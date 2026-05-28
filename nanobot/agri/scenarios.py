@@ -6,17 +6,17 @@ from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
-class AlgorithmStep:
+class ApplicationStep:
     name: str
     display_name: str
 
 
 @dataclass(frozen=True)
-class AlgorithmInfo:
+class ApplicationInfo:
     name: str
     display_name: str
     description: str
-    steps: list[AlgorithmStep] = field(default_factory=list)
+    steps: list[ApplicationStep] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -24,11 +24,11 @@ class Scenario:
     id: str
     name: str
     description: str
-    algorithms: list[AlgorithmInfo] = field(default_factory=list)
+    applications: list[ApplicationInfo] = field(default_factory=list)
 
     @property
-    def has_algorithms(self) -> bool:
-        return len(self.algorithms) > 0
+    def has_applications(self) -> bool:
+        return len(self.applications) > 0
 
 
 SCENARIOS: list[Scenario] = [
@@ -36,32 +36,32 @@ SCENARIOS: list[Scenario] = [
         id="transplant_quality",
         name="栽秧质量检测",
         description="基于无人机影像的栽秧质量检测，包括秧苗数量统计和稻穗检测，为栽秧效果评估提供数据支撑。",
-        algorithms=[
-            AlgorithmInfo(
+        applications=[
+            ApplicationInfo(
                 name="daosui",
                 display_name="稻穗检测",
                 description="基于无人机影像的稻穗数量检测算法（RPDA），采用不同型号无人机在不同高度采集的数据训练而来，检测稻穗数量，为产量预测打下基础。",
                 steps=[
-                    AlgorithmStep("image_loader", "ImageLoader"),
-                    AlgorithmStep("preprocess", "Preprocess"),
-                    AlgorithmStep("trt_inference", "TRTInference"),
-                    AlgorithmStep("postprocess", "Postprocess"),
-                    AlgorithmStep("detection_visualizer", "DetectionVisualizer"),
-                    AlgorithmStep("result_saver", "ResultSaver"),
-                    AlgorithmStep("stats_collector", "StatsCollector"),
+                    ApplicationStep("image_loader", "ImageLoader"),
+                    ApplicationStep("preprocess", "Preprocess"),
+                    ApplicationStep("trt_inference", "TRTInference"),
+                    ApplicationStep("postprocess", "Postprocess"),
+                    ApplicationStep("detection_visualizer", "DetectionVisualizer"),
+                    ApplicationStep("result_saver", "ResultSaver"),
+                    ApplicationStep("stats_collector", "StatsCollector"),
                 ],
             ),
-            AlgorithmInfo(
+            ApplicationInfo(
                 name="yangmiao",
                 display_name="秧苗检测",
                 description="基于无人机影像的秧苗检测算法，采用 SAHI 切片 + TensorRT 推理，检测秧苗数量并计算 ROI 面积（亩），为秧苗长势评估提供数据支撑。",
                 steps=[
-                    AlgorithmStep("geotiff_process", "GeoTIFFProcess"),
-                    AlgorithmStep("sahi_slicing", "SAHISlicing"),
-                    AlgorithmStep("trt_inference", "TRTInference"),
-                    AlgorithmStep("global_nms", "GlobalNMS"),
-                    AlgorithmStep("slice_paste", "SlicePaste"),
-                    AlgorithmStep("shapefile_saving", "ShapefileSaving"),
+                    ApplicationStep("geotiff_process", "GeoTIFFProcess"),
+                    ApplicationStep("sahi_slicing", "SAHISlicing"),
+                    ApplicationStep("trt_inference", "TRTInference"),
+                    ApplicationStep("global_nms", "GlobalNMS"),
+                    ApplicationStep("slice_paste", "SlicePaste"),
+                    ApplicationStep("shapefile_saving", "ShapefileSaving"),
                 ],
             ),
         ],
@@ -80,18 +80,18 @@ SCENARIOS: list[Scenario] = [
         id="weed",
         name="稻田杂草",
         description="通过无人机 RGB 影像快速识别水稻田杂草，提供杂草面积和位置信息。",
-        algorithms=[
-            AlgorithmInfo(
+        applications=[
+            ApplicationInfo(
                 name="qiuchao",
                 display_name="秋草识别",
                 description="通过无人机 RGB 影像快速识别水稻田杂草，提供杂草面积、位置信息作为来年杂草防治的参考。",
                 steps=[
-                    AlgorithmStep("dji_distortion_correct", "DJIDistortionCorrect"),
-                    AlgorithmStep("sahi_slicing", "SAHISlicing"),
-                    AlgorithmStep("trt_inference", "TRTInference"),
-                    AlgorithmStep("slice_paste", "SlicePaste"),
-                    AlgorithmStep("area_calcu", "AreaCalcu"),
-                    AlgorithmStep("stats_collector", "StatsCollector"),
+                    ApplicationStep("dji_distortion_correct", "DJIDistortionCorrect"),
+                    ApplicationStep("sahi_slicing", "SAHISlicing"),
+                    ApplicationStep("trt_inference", "TRTInference"),
+                    ApplicationStep("slice_paste", "SlicePaste"),
+                    ApplicationStep("area_calcu", "AreaCalcu"),
+                    ApplicationStep("stats_collector", "StatsCollector"),
                 ],
             ),
         ],
@@ -104,8 +104,8 @@ SCENARIOS: list[Scenario] = [
 ]
 
 SCENARIO_MAP: dict[str, Scenario] = {s.id: s for s in SCENARIOS}
-ALGORITHM_SCENARIO_MAP: dict[str, str] = {
-    algo.name: scenario.id
+APPLICATION_SCENARIO_MAP: dict[str, str] = {
+    app.name: scenario.id
     for scenario in SCENARIOS
-    for algo in scenario.algorithms
+    for app in scenario.applications
 }

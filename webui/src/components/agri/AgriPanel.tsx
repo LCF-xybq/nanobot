@@ -3,21 +3,21 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScenarioCard } from "./ScenarioCard";
-import { AlgorithmRunner } from "./AlgorithmRunner";
+import { ApplicationRunner } from "./ApplicationRunner";
 import { TaskHistory } from "./TaskHistory";
 import {
   fetchScenarios,
   fetchTasks,
   type Scenario,
   type TaskInfo,
-} from "@/lib/algo-api";
+} from "@/lib/agri-api";
 
-interface AlgoPanelProps {
+interface AgriPanelProps {
   token: string;
   onBack: () => void;
 }
 
-export function AlgoPanel({ token, onBack }: AlgoPanelProps) {
+export function AgriPanel({ token, onBack }: AgriPanelProps) {
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [tasks, setTasks] = useState<TaskInfo[]>([]);
@@ -82,7 +82,7 @@ export function AlgoPanel({ token, onBack }: AlgoPanelProps) {
         <Button variant="ghost" size="icon" onClick={onBack} className="h-7 w-7">
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h1 className="text-sm font-semibold">农业算法</h1>
+        <h1 className="text-sm font-semibold">农业应用</h1>
       </div>
 
       <div className="flex min-h-0 flex-1">
@@ -119,17 +119,17 @@ export function AlgoPanel({ token, onBack }: AlgoPanelProps) {
                 </p>
               </div>
 
-              {selected.has_algorithms ? (
+              {selected.has_applications ? (
                 <>
                   <Separator />
-                  <AlgorithmRunner
-                    algorithms={selected.algorithms}
+                  <ApplicationRunner
+                    applications={selected.applications}
                     token={token}
                   />
                 </>
               ) : (
                 <div className="rounded-lg border border-dashed border-border/60 p-6 text-center text-sm text-muted-foreground">
-                  该场景暂无已接入的算法
+                  该场景暂无已接入的应用
                 </div>
               )}
 
