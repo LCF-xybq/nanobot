@@ -33,7 +33,7 @@ class AgriTool(Tool):
             "Action to perform: list, list_data, start, status, task, stop, tasks",
             enum=("list", "list_data", "start", "status", "task", "stop", "tasks"),
         ),
-        service_name=StringSchema("Agricultural application name (e.g. daosui, yangmiao, qiuchao)", nullable=True),
+        service_name=StringSchema("Agricultural application name (e.g. daosui, yangmiao, qiuchao, daofu, ndvi)", nullable=True),
         filename=StringSchema("MinIO data file name (required for 'start')", nullable=True),
         task_id=StringSchema("Task ID (required for 'task')", nullable=True),
         required=["action"],

@@ -70,11 +70,35 @@ SCENARIOS: list[Scenario] = [
         id="lodging",
         name="倒伏监测",
         description="通过无人机影像监测水稻倒伏情况，评估灾害影响程度。",
+        applications=[
+            ApplicationInfo(
+                name="daofu",
+                display_name="倒伏监测",
+                description="基于无人机影像的水稻倒伏监测算法，通过滑动窗口切片与 TensorRT 推理识别倒伏区域，统计倒伏面积与分布。",
+                steps=[
+                    ApplicationStep("sliding_window", "SlidingWindow"),
+                    ApplicationStep("trt_inference", "TRTInference"),
+                    ApplicationStep("stats_collector", "StatsCollector"),
+                ],
+            ),
+        ],
     ),
     Scenario(
         id="growth",
         name="长势监测",
         description="基于多时相无人机影像，监测水稻长势变化趋势，辅助田间管理决策。",
+        applications=[
+            ApplicationInfo(
+                name="ndvi",
+                display_name="NDVI 长势监测",
+                description="基于多时相无人机影像计算 NDVI 植被指数，进行长势分级与重分类，生成田间长势分布图。",
+                steps=[
+                    ApplicationStep("ndvi_calcu", "NDVIcalcul"),
+                    ApplicationStep("growth_grading", "growthGrading"),
+                    ApplicationStep("growth_reclass", "growthReclass"),
+                ],
+            ),
+        ],
     ),
     Scenario(
         id="weed",
