@@ -607,22 +607,29 @@ class WebSocketChannel(BaseChannel):
     def _expected_path(self) -> str:
         return _normalize_config_path(self.config.path)
 
-    def _init_agri_client(self) -> Any:
-        """Create an AgriClient if the agri config is enabled with a base_url."""
+    def _init_algo_client(self) -> Any:
+        """Create an AlgoClient if the algo config is enabled with a base_url."""
         try:
             from nanobot.config.loader import load_config
             cfg = load_config()
         except Exception:
             return None
-        agri_cfg = cfg.tools.algo if cfg.tools.algo.enabled else cfg.algo
-        if not agri_cfg.enabled or not agri_cfg.base_url:
+        # A pydantic model is always truthy, so `or` short-circuits on the first
+        # candidate even when it is the default `enabled=False` placeholder.
+        # Pick the first candidate that is actually enabled with a base_url.
+        candidates = (
+            getattr(getattr(cfg, "tools", None), "algo", None),
+            getattr(cfg, "algo", None),
+        )
+        algo = next((a for a in candidates if a and a.enabled and a.base_url), None)
+        if algo is None:
             return None
         try:
-            from nanobot.agri.client import AgriClient
-            self.logger.info("Agricultural service enabled: {}", agri_cfg.base_url)
-            return AgriClient(agri_cfg.base_url)
+            from nanobot.algo.client import AlgoClient
+            self.logger.info("Algorithm service enabled: {}", algo.base_url)
+            return AlgoClient(algo.base_url)
         except Exception as e:
-            self.logger.warning("Failed to create AgriClient: {}", e)
+            self.logger.warning("Failed to create AlgoClient: {}", e)
             return None
 
     def _build_ssl_context(self) -> ssl.SSLContext | None:
@@ -757,9 +764,9 @@ class WebSocketChannel(BaseChannel):
             return await self._handle_settings_mcp_presets(request, mcp_action)
 
         # 3b. Algorithm panel API routes.
-        if got.startswith("/api/agri/"):
-            from nanobot.agri.routes import dispatch_agri_route
-            resp = await dispatch_agri_route(self, got, request)
+        if got.startswith("/api/algo/"):
+            from nanobot.algo.routes import dispatch_algo_route
+            resp = await dispatch_algo_route(self, got, request)
             if resp is not None:
                 return resp
 
@@ -1371,8 +1378,8 @@ class WebSocketChannel(BaseChannel):
         self._running = True
         self._stop_event = asyncio.Event()
 
-        # Initialize agri client if configured
-        self._agri_client = self._init_agri_client()
+        # Initialize algo client if configured
+        self._algo_client = self._init_algo_client()
 
         ssl_context = self._build_ssl_context()
         scheme = "wss" if ssl_context else "ws"

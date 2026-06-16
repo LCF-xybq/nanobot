@@ -1,27 +1,21 @@
 /**
- * API client for the agricultural application service.
+ * API client for the agricultural algorithm service.
  * All requests use GET because the websockets HTTP parser only handles GET.
  * Parameters are passed via query string.
  */
 
-export interface ApplicationStep {
-  name: string;
-  display_name: string;
-}
-
-export interface ApplicationInfo {
+export interface AlgorithmInfo {
   name: string;
   display_name: string;
   description: string;
-  steps: ApplicationStep[];
 }
 
 export interface Scenario {
   id: string;
   name: string;
   description: string;
-  applications: ApplicationInfo[];
-  has_applications: boolean;
+  algorithms: AlgorithmInfo[];
+  has_algorithms: boolean;
 }
 
 export interface DataFile {
@@ -48,23 +42,23 @@ export interface TaskInfo {
   error_message: string | null;
 }
 
-class AgriApiError extends Error {
+class AlgoApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
     super(message);
     this.status = status;
-    this.name = "AgriApiError";
+    this.name = "AlgoApiError";
   }
 }
 
-async function agriGet<T>(path: string, token: string): Promise<T> {
+async function algoGet<T>(path: string, token: string): Promise<T> {
   const res = await fetch(path, {
     headers: { Authorization: `Bearer ${token}` },
     credentials: "same-origin",
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new AgriApiError(
+    throw new AlgoApiError(
       res.status,
       (body as Record<string, string>).error ?? `HTTP ${res.status}`,
     );
@@ -73,8 +67,8 @@ async function agriGet<T>(path: string, token: string): Promise<T> {
 }
 
 export async function fetchScenarios(token: string): Promise<Scenario[]> {
-  const data = await agriGet<{ scenarios: Scenario[] }>(
-    "/api/agri/scenarios",
+  const data = await algoGet<{ scenarios: Scenario[] }>(
+    "/api/algo/scenarios",
     token,
   );
   return data.scenarios;
@@ -83,11 +77,11 @@ export async function fetchScenarios(token: string): Promise<Scenario[]> {
 export async function fetchServices(
   token: string,
 ): Promise<Record<string, { name: string; description: string }>> {
-  return agriGet("/api/agri/services", token);
+  return algoGet("/api/algo/services", token);
 }
 
 export async function fetchTasks(token: string): Promise<TaskInfo[]> {
-  const data = await agriGet<{ tasks: TaskInfo[] }>("/api/agri/tasks", token);
+  const data = await algoGet<{ tasks: TaskInfo[] }>("/api/algo/tasks", token);
   return data.tasks ?? [];
 }
 
@@ -95,8 +89,8 @@ export async function fetchTasksByService(
   token: string,
   serviceName: string,
 ): Promise<TaskInfo[]> {
-  const data = await agriGet<{ tasks: TaskInfo[] }>(
-    `/api/agri/tasks/${encodeURIComponent(serviceName)}`,
+  const data = await algoGet<{ tasks: TaskInfo[] }>(
+    `/api/algo/tasks/${encodeURIComponent(serviceName)}`,
     token,
   );
   return data.tasks ?? [];
@@ -106,14 +100,14 @@ export async function fetchServiceStatus(
   token: string,
   serviceName: string,
 ): Promise<TaskInfo> {
-  return agriGet(`/api/agri/status/${encodeURIComponent(serviceName)}`, token);
+  return algoGet(`/api/algo/status/${encodeURIComponent(serviceName)}`, token);
 }
 
 export async function fetchTaskStatus(
   token: string,
   taskId: string,
 ): Promise<TaskInfo> {
-  return agriGet(`/api/agri/task/${encodeURIComponent(taskId)}`, token);
+  return algoGet(`/api/algo/task/${encodeURIComponent(taskId)}`, token);
 }
 
 export async function startService(
@@ -121,8 +115,8 @@ export async function startService(
   serviceName: string,
   filename: string,
 ): Promise<{ task_id: string; status: string; service_name: string }> {
-  return agriGet(
-    `/api/agri/start/${encodeURIComponent(serviceName)}?filename=${encodeURIComponent(filename)}`,
+  return algoGet(
+    `/api/algo/start/${encodeURIComponent(serviceName)}?filename=${encodeURIComponent(filename)}`,
     token,
   );
 }
@@ -131,15 +125,15 @@ export async function stopService(
   token: string,
   serviceName: string,
 ): Promise<{ status: string; service_name: string; task_id: string }> {
-  return agriGet(`/api/agri/stop/${encodeURIComponent(serviceName)}`, token);
+  return algoGet(`/api/algo/stop/${encodeURIComponent(serviceName)}`, token);
 }
 
 export async function fetchDataFiles(
   token: string,
-  agriName: string,
+  algoName: string,
 ): Promise<DataFile[]> {
-  const data = await agriGet<{ data: DataFile[]; count: number }>(
-    `/api/agri/data?agri_name=${encodeURIComponent(agriName)}`,
+  const data = await algoGet<{ data: DataFile[]; count: number }>(
+    `/api/algo/data?algo_name=${encodeURIComponent(algoName)}`,
     token,
   );
   return data.data ?? [];

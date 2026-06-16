@@ -3,21 +3,21 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScenarioCard } from "./ScenarioCard";
-import { ApplicationRunner } from "./ApplicationRunner";
+import { AlgorithmRunner } from "./AlgorithmRunner";
 import { TaskHistory } from "./TaskHistory";
 import {
   fetchScenarios,
   fetchTasks,
   type Scenario,
   type TaskInfo,
-} from "@/lib/agri-api";
+} from "@/lib/algo-api";
 
-interface AgriPanelProps {
+interface AlgoPanelProps {
   token: string;
   onBack: () => void;
 }
 
-export function AgriPanel({ token, onBack }: AgriPanelProps) {
+export function AlgoPanel({ token, onBack }: AlgoPanelProps) {
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [tasks, setTasks] = useState<TaskInfo[]>([]);
@@ -82,7 +82,7 @@ export function AgriPanel({ token, onBack }: AgriPanelProps) {
         <Button variant="ghost" size="icon" onClick={onBack} className="h-7 w-7">
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h1 className="text-sm font-semibold">农业应用</h1>
+        <h1 className="text-sm font-semibold">农业算法</h1>
       </div>
 
       <div className="flex min-h-0 flex-1">
@@ -119,17 +119,17 @@ export function AgriPanel({ token, onBack }: AgriPanelProps) {
                 </p>
               </div>
 
-              {selected.has_applications ? (
+              {selected.has_algorithms ? (
                 <>
                   <Separator />
-                  <ApplicationRunner
-                    applications={selected.applications}
+                  <AlgorithmRunner
+                    algorithms={selected.algorithms}
                     token={token}
                   />
                 </>
               ) : (
                 <div className="rounded-lg border border-dashed border-border/60 p-6 text-center text-sm text-muted-foreground">
-                  该场景暂无已接入的应用
+                  该场景暂无已接入的算法
                 </div>
               )}
 

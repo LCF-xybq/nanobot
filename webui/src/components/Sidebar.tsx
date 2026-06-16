@@ -143,7 +143,7 @@ export function Sidebar(props: SidebarProps) {
         />
         <SidebarActionButton
           collapsed={collapsed}
-          label={t("sidebar.agri", { defaultValue: "农业应用" })}
+          label={t("sidebar.agri", { defaultValue: "农业算法" })}
           onClick={props.onOpenAgri}
           icon={<Sprout className="h-4 w-4" />}
         />

@@ -244,7 +244,7 @@ class HeartbeatConfig(Base):
 
 
 class AlgoConfig(Base):
-    """Agricultural application service configuration."""
+    """Agricultural algorithm service configuration."""
 
     enabled: bool = False
     base_url: str = ""
