@@ -19,8 +19,6 @@ from nanobot.algo.scenarios import SCENARIOS
 if TYPE_CHECKING:
     from websockets.http11 import Request as WsRequest
 
-    from nanobot.channels.websocket import WebSocketChannel
-
 
 def _json_response(data: Any, *, status: int = 200) -> Any:
     from websockets.datastructures import Headers
@@ -39,8 +37,8 @@ def _json_response(data: Any, *, status: int = 200) -> Any:
     return Response(status, reason, headers, body)
 
 
-def _get_client(channel: WebSocketChannel) -> AlgoClient | None:
-    return getattr(channel, "_algo_client", None)
+def _get_client(handler: Any) -> AlgoClient | None:
+    return getattr(handler, "_algo_client", None)
 
 
 def _query_param(request: WsRequest, name: str) -> str:
@@ -51,7 +49,7 @@ def _query_param(request: WsRequest, name: str) -> str:
     return values[0] if values else ""
 
 
-async def handle_scenarios(channel: WebSocketChannel, request: WsRequest) -> Any:
+async def handle_scenarios(handler: Any, request: WsRequest) -> Any:
     scenarios = [
         {
             "id": s.id,
@@ -68,8 +66,8 @@ async def handle_scenarios(channel: WebSocketChannel, request: WsRequest) -> Any
     return _json_response({"scenarios": scenarios})
 
 
-async def handle_services(channel: WebSocketChannel, request: WsRequest) -> Any:
-    client = _get_client(channel)
+async def handle_services(handler: Any, request: WsRequest) -> Any:
+    client = _get_client(handler)
     if not client:
         return _json_response({"error": "Algorithm service not configured"}, status=503)
     try:
@@ -79,8 +77,8 @@ async def handle_services(channel: WebSocketChannel, request: WsRequest) -> Any:
         return _json_response({"error": str(e)}, status=502)
 
 
-async def handle_tasks(channel: WebSocketChannel, request: WsRequest) -> Any:
-    client = _get_client(channel)
+async def handle_tasks(handler: Any, request: WsRequest) -> Any:
+    client = _get_client(handler)
     if not client:
         return _json_response({"error": "Algorithm service not configured"}, status=503)
     try:
@@ -91,9 +89,9 @@ async def handle_tasks(channel: WebSocketChannel, request: WsRequest) -> Any:
 
 
 async def handle_tasks_by_service(
-    channel: WebSocketChannel, request: WsRequest, service_name: str,
+    handler: Any, request: WsRequest, service_name: str,
 ) -> Any:
-    client = _get_client(channel)
+    client = _get_client(handler)
     if not client:
         return _json_response({"error": "Algorithm service not configured"}, status=503)
     try:
@@ -104,9 +102,9 @@ async def handle_tasks_by_service(
 
 
 async def handle_service_status(
-    channel: WebSocketChannel, request: WsRequest, service_name: str,
+    handler: Any, request: WsRequest, service_name: str,
 ) -> Any:
-    client = _get_client(channel)
+    client = _get_client(handler)
     if not client:
         return _json_response({"error": "Algorithm service not configured"}, status=503)
     try:
@@ -117,9 +115,9 @@ async def handle_service_status(
 
 
 async def handle_task_status(
-    channel: WebSocketChannel, request: WsRequest, task_id: str,
+    handler: Any, request: WsRequest, task_id: str,
 ) -> Any:
-    client = _get_client(channel)
+    client = _get_client(handler)
     if not client:
         return _json_response({"error": "Algorithm service not configured"}, status=503)
     try:
@@ -130,9 +128,9 @@ async def handle_task_status(
 
 
 async def handle_start(
-    channel: WebSocketChannel, request: WsRequest, service_name: str,
+    handler: Any, request: WsRequest, service_name: str,
 ) -> Any:
-    client = _get_client(channel)
+    client = _get_client(handler)
     if not client:
         return _json_response({"error": "Algorithm service not configured"}, status=503)
     filename = _query_param(request, "filename")
@@ -146,9 +144,9 @@ async def handle_start(
 
 
 async def handle_stop(
-    channel: WebSocketChannel, request: WsRequest, service_name: str,
+    handler: Any, request: WsRequest, service_name: str,
 ) -> Any:
-    client = _get_client(channel)
+    client = _get_client(handler)
     if not client:
         return _json_response({"error": "Algorithm service not configured"}, status=503)
     try:
@@ -158,8 +156,8 @@ async def handle_stop(
         return _json_response({"error": str(e)}, status=502)
 
 
-async def handle_list_data(channel: WebSocketChannel, request: WsRequest) -> Any:
-    client = _get_client(channel)
+async def handle_list_data(handler: Any, request: WsRequest) -> Any:
+    client = _get_client(handler)
     if not client:
         return _json_response({"error": "Algorithm service not configured"}, status=503)
     algo_name = _query_param(request, "algo_name")
@@ -189,7 +187,7 @@ _ROUTES: list[tuple[str, Any]] = [
 
 
 async def dispatch_algo_route(
-    channel: WebSocketChannel, path: str, request: WsRequest,
+    handler: Any, path: str, request: WsRequest,
 ) -> Any | None:
     """Try to match an /api/algo/* route. Returns a Response or None."""
 
@@ -199,15 +197,15 @@ async def dispatch_algo_route(
     # tasks_by_service must be checked before generic /api/algo/tasks
     m = _TASKS_BY_SERVICE_RE.match(clean_path)
     if m:
-        return await handle_tasks_by_service(channel, request, m.group(1))
+        return await handle_tasks_by_service(handler, request, m.group(1))
 
-    for pattern, handler in _ROUTES:
+    for pattern, handler_fn in _ROUTES:
         m = re.match(pattern, clean_path)
         if not m:
             continue
         groups = m.groups()
         if groups:
-            return await handler(channel, request, *groups)
-        return await handler(channel, request)
+            return await handler_fn(handler, request, *groups)
+        return await handler_fn(handler, request)
 
     return None
