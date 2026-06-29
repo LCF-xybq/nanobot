@@ -101,3 +101,4 @@ exp/
 .playwright-mcp/
 .claude/
 CLAUDE.md
+bridge/node_modules/

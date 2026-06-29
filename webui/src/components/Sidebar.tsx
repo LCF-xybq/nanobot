@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import {
   Archive,
   Brain,
+  CalendarClock,
   Menu,
   Search,
   Settings,
@@ -38,8 +39,9 @@ interface SidebarProps {
   onOpenApps: () => void;
   onOpenAgri: () => void;
   onOpenSkills: () => void;
+  onOpenAutomations: () => void;
   onOpenSearch: () => void;
-  activeUtility?: "apps" | "skills" | null;
+  activeUtility?: "apps" | "skills" | "automations" | null;
   onToggleArchived: () => void;
   onCollapse: () => void;
   onExpand?: () => void;
@@ -51,7 +53,7 @@ interface SidebarProps {
   projectNameOverrides?: Record<string, string>;
   collapsedGroups?: Record<string, boolean>;
   runningChatIds?: string[];
-  completedChatIds?: string[];
+  updatedChatIds?: string[];
   viewState?: SidebarViewState;
   showArchived?: boolean;
   archivedCount?: number;
@@ -179,6 +181,13 @@ export function Sidebar(props: SidebarProps) {
           active={props.activeUtility === "skills"}
           icon={<Brain className="h-4 w-4" />}
         />
+        <SidebarActionButton
+          collapsed={collapsed}
+          label={t("sidebar.automations", { defaultValue: "Automations" })}
+          onClick={props.onOpenAutomations}
+          active={props.activeUtility === "automations"}
+          icon={<CalendarClock className="h-4 w-4" />}
+        />
         {props.archivedCount ? (
           <SidebarActionButton
             collapsed={collapsed}
@@ -214,7 +223,7 @@ export function Sidebar(props: SidebarProps) {
             projectNameOverrides={props.projectNameOverrides}
             collapsedGroups={props.collapsedGroups}
             runningChatIds={props.runningChatIds}
-            completedChatIds={props.completedChatIds}
+            updatedChatIds={props.updatedChatIds}
             density={props.viewState?.density}
             showPreviews={props.viewState?.show_previews}
             showTimestamps={props.viewState?.show_timestamps}
