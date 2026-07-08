@@ -1607,6 +1607,7 @@ function Shell({
                 onWorkspaceScopeChange={applyWorkspaceScope}
                 settingsSnapshot={settingsSnapshot}
                 onOpenModelSettings={onOpenModelSettings}
+                skills={skills}
               />
             </div>
             {view !== "chat" && view !== "algo" && (
