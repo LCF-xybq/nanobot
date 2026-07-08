@@ -82,6 +82,13 @@ SCENARIOS: list[Scenario] = [
         id="wheat_height",
         name="小麦株高",
         description="基于无人机影像估算小麦株高，为品种筛选和生长评估提供量化指标。",
+        algorithms=[
+            AlgorithmInfo(
+                name="height",
+                display_name="株高检测",
+                description="植物株高测量算法，通过检测标尺及关键点几何换算得到株高（cm），输出可视化结果及株高JSON。",
+            ),
+        ],
     ),
 ]
 
