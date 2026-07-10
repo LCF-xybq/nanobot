@@ -42,9 +42,9 @@ class MinioUploadConfig(Base):
     bucket_name: str = Field(default="cloud-bucket", validation_alias="bucketName")
     secure: bool = False
     # Object key template — ``{algo}`` is filled with the ``algo`` argument,
-    # ``{zip_name}`` with ``{folder}_{timestamp}.zip``. The default ``algoritm``
-    # spelling is intentional — it matches the server-side bucket layout.
-    object_prefix: str = Field(default="algoritm/{algo}/", validation_alias="objectPrefix")
+    # ``{zip_name}`` with ``{folder}_{timestamp}.zip``. The ``algorithm`` prefix
+    # must match the server-side bucket layout the algo service scans.
+    object_prefix: str = Field(default="algorithm/{algo}/", validation_alias="objectPrefix")
     keep_local: bool = Field(default=False, validation_alias="keepLocal")
 
 
