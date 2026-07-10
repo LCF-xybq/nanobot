@@ -24,43 +24,29 @@ answering — otherwise your answer will be a guess.
 
 ```
 vision_analyze(
-  images=["/path/from/the/marker.png"],
+  images=["/path/from/the/marker.png"],   # required, one or more paths
   prompt="What growth stage is this crop in? Answer briefly.",
 )
 ```
 
 - Copy the path from the `[image: ...]` marker verbatim.
-- For multiple markers in one message, pass all paths in a single call.
+- `images` paths must be inside the workspace or the nanobot media directory.
+- For multiple markers / multi-image comparison, pass all paths in one call and
+  ask the comparison question in `prompt`.
 - Write a focused `prompt` tied to the user's question — "What growth stage?"
   beats "describe this image".
-- The tool returns text only. Use that text to answer the user; never claim to
-  "see" the image yourself.
+- The tool returns **text only** — never an image. Quote or summarize that text
+  back to the user; do not paste raw base64, and never claim to "see" the image
+  yourself.
 
 ## When NOT To Use
 
-- The user just wants the image saved/forwarded — use `message` with `media`.
-- The file is a PDF/DOCX/XLSX — use `read_file` (extracts text directly).
+- The user only wants the image re-sent, forwarded, or saved — use `message`
+  with the `media` parameter.
+- The image is one you just generated via `generate_image` and the user hasn't
+  asked about its content.
+- The file is a PDF / DOCX / XLSX — use `read_file` (extracts text directly).
 - No `[image: ...]` marker is present and the user hasn't referenced any image.
-
-
-## When NOT To Use
-
-- The user only wants the image re-sent, forwarded, or saved — use `message` with the `media` parameter.
-- The image is one you just generated via `generate_image` and the user hasn't asked about its content.
-- The file is a PDF / DOCX / XLSX — use `read_file` (which extracts text from those directly).
-
-## How To Call
-
-```
-vision_analyze(
-  images=["/path/to/image.png"],   # required, one or more paths
-  prompt="Extract all visible text",  # optional, focused question
-)
-```
-
-- `images` paths must be inside the workspace or the nanobot media directory.
-- For multi-image comparison, pass all paths in one call and ask the comparison question in `prompt`.
-- The tool returns **text only** — never an image. Quote or summarize that text back to the user; do not paste raw base64.
 
 ## Prompt Tips
 
