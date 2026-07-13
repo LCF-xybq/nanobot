@@ -210,6 +210,13 @@ export interface ToolProgressEvent {
   embeds?: unknown[];
 }
 
+export interface UIFileDiff {
+  format: "unified" | string;
+  context?: number;
+  truncated?: boolean;
+  text?: string;
+}
+
 export interface UIFileEdit {
   version?: number;
   call_id: string;
@@ -225,6 +232,7 @@ export interface UIFileEdit {
   binary?: boolean;
   error?: string;
   pending?: boolean;
+  diff?: UIFileDiff;
 }
 
 export interface ChatSummary {
@@ -296,6 +304,7 @@ export interface SidebarStatePayload {
 
 export interface BootstrapResponse {
   token: string;
+  api_token: string;
   ws_path: string;
   ws_url?: string | null;
   expires_in: number;
@@ -923,11 +932,6 @@ export interface OutboundMedia {
   name?: string;
 }
 
-export interface OutboundImageGeneration {
-  enabled: true;
-  aspect_ratio?: string | null;
-}
-
 export interface OutboundCliAppMention {
   name: string;
   display_name?: string;
@@ -989,7 +993,6 @@ export type Outbound =
       chat_id: string;
       content: string;
       media?: OutboundMedia[];
-      image_generation?: OutboundImageGeneration;
       cli_apps?: OutboundCliAppMention[];
       mcp_presets?: OutboundMcpPresetMention[];
       workspace_scope?: WorkspaceScopePayload;

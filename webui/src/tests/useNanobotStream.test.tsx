@@ -596,6 +596,71 @@ describe("useNanobotStream", () => {
     expect(result.current.messages[0].toolEvents).toBeUndefined();
   });
 
+  it("keeps live file edits separate from mixed non-file tool traces", () => {
+    const fake = fakeClient();
+    const { result } = renderHook(() => useNanobotStream("chat-file-edit-mixed-tools", EMPTY_MESSAGES), {
+      wrapper: wrap(fake.client),
+    });
+
+    act(() => {
+      fake.emit("chat-file-edit-mixed-tools", {
+        event: "message",
+        chat_id: "chat-file-edit-mixed-tools",
+        text: "",
+        kind: "tool_hint",
+        tool_events: [
+          {
+            phase: "start",
+            call_id: "call-read",
+            name: "read_file",
+            arguments: { path: "quicksort.py" },
+          },
+          {
+            phase: "start",
+            call_id: "call-write",
+            name: "write_file",
+            arguments: { path: "sorting/quicksort.py", content: "def quicksort():\n" },
+          },
+        ],
+      });
+      fake.emit("chat-file-edit-mixed-tools", {
+        event: "file_edit",
+        chat_id: "chat-file-edit-mixed-tools",
+        edits: [{
+          call_id: "call-write",
+          tool: "write_file",
+          path: "sorting/quicksort.py",
+          phase: "end",
+          added: 3,
+          deleted: 0,
+          approximate: false,
+          status: "done",
+        }],
+      });
+    });
+
+    expect(result.current.messages).toHaveLength(2);
+    expect(result.current.messages[0]).toMatchObject({
+      role: "tool",
+      kind: "trace",
+      traces: ['read_file({"path":"quicksort.py"})'],
+    });
+    expect(result.current.messages[0].toolEvents?.map((event) => event.name)).toEqual(["read_file"]);
+    expect(result.current.messages[0].fileEdits).toBeUndefined();
+    expect(result.current.messages[1]).toMatchObject({
+      role: "tool",
+      kind: "trace",
+      traces: [],
+      fileEdits: [{
+        call_id: "call-write",
+        tool: "write_file",
+        path: "sorting/quicksort.py",
+        status: "done",
+      }],
+    });
+    expect(result.current.messages[1].toolEvents).toBeUndefined();
+  });
+
   it("keeps every file from one apply_patch call", () => {
     const fake = fakeClient();
     const { result } = renderHook(() => useNanobotStream("chat-apply-patch-many", EMPTY_MESSAGES), {
@@ -1573,31 +1638,6 @@ describe("useNanobotStream", () => {
     expect(result.current.messages).toHaveLength(1);
     expect(result.current.messages[0].content).toBe("image ready");
     expect(result.current.messages[0].media).toHaveLength(1);
-  });
-
-  it("passes image generation options to the websocket client", () => {
-    const fake = fakeClient();
-    const { result } = renderHook(() => useNanobotStream("chat-img", EMPTY_MESSAGES), {
-      wrapper: wrap(fake.client),
-    });
-
-    act(() => {
-      result.current.send(
-        "draw a square icon",
-        undefined,
-        { imageGeneration: { enabled: true, aspect_ratio: "1:1" } },
-      );
-    });
-
-    expect(fake.client.sendMessage).toHaveBeenCalledWith(
-      "chat-img",
-      "draw a square icon",
-      undefined,
-      expect.objectContaining({
-        imageGeneration: { enabled: true, aspect_ratio: "1:1" },
-        turnId: expect.any(String),
-      }),
-    );
   });
 
   it("stops the active turn without adding a user slash command bubble", () => {

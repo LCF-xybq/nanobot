@@ -87,6 +87,7 @@ def _basic_handler(bus: Any, **kw: Any) -> GatewayServices:
         "enabled": True, "allowFrom": ["*"],
         "host": "127.0.0.1", "port": _PORT,
         "path": "/ws", "websocketRequiresToken": False,
+        "tokenIssueSecret": kw.get("token_issue_secret", ""),
     })
     return build_gateway_services(
         config=cfg,
@@ -742,6 +743,117 @@ async def test_webui_set_workspace_scope_rejects_running_chat(bus: MagicMock, tm
         "project_path": str(project.resolve()),
         "access_mode": "restricted",
     }
+
+
+@pytest.mark.asyncio
+async def test_remote_webui_scope_allows_access_reduction(
+    bus: MagicMock,
+    tmp_path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr("nanobot.webui.workspaces.get_webui_dir", lambda: tmp_path / "webui")
+    default_workspace = tmp_path / "default"
+    default_workspace.mkdir()
+    sessions = SessionManager(tmp_path / "sessions")
+    channel = WebSocketChannel(
+        {"enabled": True, "allowFrom": ["*"], "host": "127.0.0.1"},
+        bus,
+        gateway=_basic_handler(bus, session_manager=sessions, workspace_path=default_workspace),
+    )
+    conn = AsyncMock()
+    conn.remote_address = ("203.0.113.8", 50123)
+
+    await channel._dispatch_envelope(
+        conn,
+        "webui-client",
+        {
+            "type": "set_workspace_scope",
+            "chat_id": "chat-remote",
+            "workspace_scope": {
+                "project_path": str(default_workspace),
+                "access_mode": "restricted",
+            },
+        },
+    )
+
+    payload = json.loads(conn.send.await_args.args[0])
+    assert payload["event"] == "session_updated"
+    assert payload["workspace_scope"]["access_mode"] == "restricted"
+    saved = sessions.read_session_file("websocket:chat-remote")
+    assert saved["metadata"]["workspace_scope"] == {
+        "project_path": str(default_workspace.resolve()),
+        "access_mode": "restricted",
+    }
+
+
+@pytest.mark.asyncio
+async def test_remote_access_reduction_rejects_stale_in_flight_message_scope(
+    bus: MagicMock,
+    tmp_path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr("nanobot.webui.workspaces.get_webui_dir", lambda: tmp_path / "webui")
+    default_workspace = tmp_path / "default"
+    default_workspace.mkdir()
+    sessions = SessionManager(tmp_path / "sessions")
+    channel = WebSocketChannel(
+        {"enabled": True, "allowFrom": ["*"], "host": "127.0.0.1"},
+        bus,
+        gateway=_basic_handler(bus, session_manager=sessions, workspace_path=default_workspace),
+    )
+    hydrate_started = asyncio.Event()
+    release_hydrate = asyncio.Event()
+
+    async def blocked_hydrate(_chat_id: str) -> None:
+        hydrate_started.set()
+        await release_hydrate.wait()
+
+    channel._hydrate_after_subscribe = blocked_hydrate
+    message_conn = AsyncMock()
+    message_conn.remote_address = ("203.0.113.8", 50123)
+    settings_conn = AsyncMock()
+    settings_conn.remote_address = ("203.0.113.8", 50124)
+    chat_id = "race-chat"
+
+    message_task = asyncio.create_task(
+        channel._dispatch_envelope(
+            message_conn,
+            "remote-message",
+            {
+                "type": "message",
+                "chat_id": chat_id,
+                "content": "hello",
+                "webui": True,
+                "workspace_scope": {
+                    "project_path": str(default_workspace),
+                    "access_mode": "full",
+                },
+            },
+        )
+    )
+    await hydrate_started.wait()
+
+    await channel._dispatch_envelope(
+        settings_conn,
+        "remote-settings",
+        {
+            "type": "set_workspace_scope",
+            "chat_id": chat_id,
+            "workspace_scope": {
+                "project_path": str(default_workspace),
+                "access_mode": "restricted",
+            },
+        },
+    )
+    release_hydrate.set()
+    await message_task
+
+    saved = sessions.read_session_file(f"websocket:{chat_id}")
+    assert saved["metadata"]["workspace_scope"]["access_mode"] == "restricted"
+    payload = json.loads(message_conn.send.await_args.args[0])
+    assert payload["event"] == "error"
+    assert payload["detail"] == "workspace_scope_rejected"
+    bus.publish_inbound.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -2099,7 +2211,12 @@ async def test_bootstrap_exposes_native_surface(bus: MagicMock) -> None:
             "websocketRequiresToken": True,
         },
         bus,
-        gateway=_basic_handler(bus, runtime_surface="native", runtime_capabilities_overrides={"can_pick_folder": True}),
+        gateway=_basic_handler(
+            bus,
+            token_issue_secret="native-secret",
+            runtime_surface="native",
+            runtime_capabilities_overrides={"can_pick_folder": True},
+        ),
     )
 
     server_task = asyncio.create_task(channel.start())
@@ -2116,6 +2233,8 @@ async def test_bootstrap_exposes_native_surface(bus: MagicMock) -> None:
         assert body["runtime_capabilities"]["can_pick_folder"] is True
         assert body["runtime_capabilities"]["can_restart_engine"] is True
         assert body["token"].startswith("nbwt_")
+        assert body["api_token"].startswith("nbwt_")
+        assert body["api_token"] != body["token"]
     finally:
         await channel.stop()
         await server_task
@@ -2906,7 +3025,11 @@ def test_handle_file_preview_rejects_paths_outside_workspace(tmp_path) -> None:
     outside = tmp_path / "secret.py"
     outside.write_text("secret = True\n", encoding="utf-8")
 
-    gateway = _basic_handler(MagicMock(), workspace_path=workspace)
+    gateway = _basic_handler(
+        MagicMock(),
+        workspace_path=workspace,
+        default_restrict_to_workspace=True,
+    )
     gateway.tokens.api_tokens["tok"] = time.monotonic() + 300.0
     key = "websocket:file-preview"
     enc = quote(key, safe="")
@@ -2918,6 +3041,39 @@ def test_handle_file_preview_rejects_paths_outside_workspace(tmp_path) -> None:
     resp = gateway.http._handle_file_preview(req, enc)
 
     assert resp.status_code == 403
+
+
+def test_handle_file_preview_allows_paths_outside_workspace_in_full_access(tmp_path) -> None:
+    from urllib.parse import quote
+
+    from websockets.datastructures import Headers
+    from websockets.http11 import Request
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    outside = tmp_path / "notes.py"
+    outside.write_text("value = 42\n", encoding="utf-8")
+
+    gateway = _basic_handler(
+        MagicMock(),
+        workspace_path=workspace,
+        default_restrict_to_workspace=False,
+    )
+    gateway.tokens.api_tokens["tok"] = time.monotonic() + 300.0
+    key = "websocket:file-preview"
+    enc = quote(key, safe="")
+    req = Request(
+        f"/api/sessions/{enc}/file-preview?path={quote(str(outside), safe='')}",
+        Headers([("Authorization", "Bearer tok")]),
+    )
+
+    resp = gateway.http._handle_file_preview(req, enc)
+
+    assert resp.status_code == 200
+    body = json.loads(resp.body.decode())
+    assert body["path"] == str(outside.resolve())
+    assert body["display_path"] == outside.resolve().as_posix()
+    assert body["content"].splitlines() == ["value = 42"]
 
 
 def test_handle_webui_thread_get_backfills_legacy_missing_user_rows(

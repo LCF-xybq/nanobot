@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from nanobot import __version__
+from nanobot.agent.goal_permission import goal_mutation_permission
 from nanobot.bus.events import OutboundMessage
 from nanobot.command.router import CommandContext, CommandRouter
 from nanobot.utils.helpers import build_status_content
@@ -227,9 +228,13 @@ async def cmd_status(ctx: CommandContext) -> OutboundMessage:
     """Build an outbound status message for a session."""
     loop = ctx.loop
     session = ctx.session or loop.sessions.get_or_create(ctx.key)
+    runtime = ctx.runtime or loop.llm_runtime()
     ctx_est = 0
     with suppress(Exception):
-        ctx_est, _ = loop.consolidator.estimate_session_prompt_tokens(session)
+        ctx_est, _ = loop.consolidator.estimate_session_prompt_tokens(
+            session,
+            runtime=runtime,
+        )
     if ctx_est <= 0:
         ctx_est = loop._last_usage.get("prompt_tokens", 0)
 
@@ -253,16 +258,14 @@ async def cmd_status(ctx: CommandContext) -> OutboundMessage:
         channel=ctx.msg.channel,
         chat_id=ctx.msg.chat_id,
         content=build_status_content(
-            version=__version__, model=loop.model,
+            version=__version__, model=runtime.model,
             start_time=loop._start_time, last_usage=loop._last_usage,
-            context_window_tokens=loop.context_window_tokens,
+            context_window_tokens=runtime.context_window_tokens,
             session_msg_count=len(session.get_history(max_messages=0)),
             context_tokens_estimate=ctx_est,
             search_usage_text=search_usage_text,
             active_task_count=task_count,
-            max_completion_tokens=getattr(
-                getattr(loop.provider, "generation", None), "max_tokens", 8192
-            ),
+            max_completion_tokens=runtime.generation.max_tokens,
         ),
         metadata={**dict(ctx.msg.metadata or {}), "render_as": "text"},
     )
@@ -278,7 +281,14 @@ async def cmd_new(ctx: CommandContext) -> OutboundMessage:
     loop.sessions.save(session)
     loop.sessions.invalidate(session.key)
     if snapshot:
-        loop._schedule_background(loop.consolidator.archive(snapshot, session_key=ctx.key))
+        runtime = ctx.runtime or loop.llm_runtime()
+        loop._schedule_background(
+            loop.consolidator.archive(
+                snapshot,
+                runtime=runtime,
+                session_key=ctx.key,
+            )
+        )
     return OutboundMessage(
         channel=ctx.msg.channel, chat_id=ctx.msg.chat_id,
         content="New session started.",
@@ -340,7 +350,7 @@ async def cmd_model(ctx: CommandContext) -> OutboundMessage:
 
     name = parts[0]
     try:
-        loop.set_model_preset(name)
+        runtime = loop.set_model_preset(name)
     except (KeyError, ValueError) as exc:
         names = _model_preset_names(loop)
         return OutboundMessage(
@@ -353,11 +363,11 @@ async def cmd_model(ctx: CommandContext) -> OutboundMessage:
             metadata=metadata,
         )
 
-    max_tokens = getattr(getattr(loop.provider, "generation", None), "max_tokens", None)
+    max_tokens = runtime.generation.max_tokens
     lines = [
-        f"Switched model preset to `{loop.model_preset}`.",
-        f"- Model: `{loop.model}`",
-        f"- Context window: {loop.context_window_tokens}",
+        f"Switched model preset to `{runtime.model_preset}`.",
+        f"- Model: `{runtime.model}`",
+        f"- Context window: {runtime.context_window_tokens}",
     ]
     if max_tokens is not None:
         lines.append(f"- Max output tokens: {max_tokens}")
@@ -737,7 +747,7 @@ async def cmd_history(ctx: CommandContext) -> OutboundMessage:
             )
 
     session = ctx.session or ctx.loop.sessions.get_or_create(ctx.key)
-    history = session.get_history(max_messages=0)
+    history = session.get_history(max_messages=0, include_runtime_context=False)
     visible = [_format_history_message(m) for m in history]
     visible = [m for m in visible if m is not None]
     recent = visible[-count:]
@@ -757,17 +767,8 @@ async def cmd_history(ctx: CommandContext) -> OutboundMessage:
     )
 
 
-_GOAL_PROMPT_TEMPLATE = """The user declared a sustained objective for this thread.
-
-Inspect or clarify if needed, then call `long_task` with the refined objective (and optional short ui_summary). Work proceeds as normal assistant turns using your usual tools. When the objective is fully done and verified, call `complete_goal` with a brief recap. If the user later cancels or changes direction, still call `complete_goal` with an honest recap (then `long_task` again only after there is no active goal). Do not use `long_task` / `complete_goal` for trivial one-shot answers.
-
-Goal:
-{goal}
-"""
-
-
 async def cmd_goal(ctx: CommandContext) -> OutboundMessage | None:
-    """Rewrite /goal into a normal agent turn that nudges long_task use."""
+    """Mark this turn as an explicit sustained-goal request."""
     goal = ctx.args.strip()
     if not goal:
         return OutboundMessage(
@@ -786,14 +787,23 @@ async def cmd_goal(ctx: CommandContext) -> OutboundMessage | None:
             ),
             metadata={**dict(ctx.msg.metadata or {}), "render_as": "text"},
         )
+    if not ctx.is_user_turn:
+        return OutboundMessage(
+            channel=ctx.msg.channel,
+            chat_id=ctx.msg.chat_id,
+            content="Goal mode can only be started by a user `/goal <task>` command.",
+            metadata={**dict(ctx.msg.metadata or {}), "render_as": "text"},
+        )
 
+    ctx.turn_scopes.append(goal_mutation_permission(True))
     ctx.msg.metadata = {
         **dict(ctx.msg.metadata or {}),
         "original_command": "/goal",
         "original_content": ctx.raw,
+        "goal_requested": True,
         "goal_started_at": time.time(),
     }
-    ctx.msg.content = _GOAL_PROMPT_TEMPLATE.format(goal=goal)
+    ctx.msg.content = ctx.raw
     return None
 
 

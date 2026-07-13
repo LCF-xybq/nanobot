@@ -155,6 +155,36 @@ def test_disabled_dream_cursor_only_advances_when_behind(tmp_path) -> None:
     assert store.get_last_dream_cursor() == 10
 
 
+def test_commit_dream_changes_skips_noop_run(tmp_path) -> None:
+    store = MemoryStore(tmp_path)
+    store.write_soul("# Soul")
+    store.write_memory("# Memory")
+    store.git.init()
+    store.git.auto_commit("initial")
+    store.git.auto_commit = MagicMock(wraps=store.git.auto_commit)
+
+    assert cli_commands._commit_dream_changes(store) is None
+    store.git.auto_commit.assert_not_called()
+
+
+def test_commit_dream_changes_commits_real_edits(tmp_path) -> None:
+    store = MemoryStore(tmp_path)
+    store.write_soul("# Soul")
+    store.write_memory("# Memory")
+    store.git.init()
+    store.git.auto_commit("initial")
+    store.write_memory("# Memory\n- Research notes")
+    store.git.auto_commit = MagicMock(wraps=store.git.auto_commit)
+
+    sha = cli_commands._commit_dream_changes(store)
+
+    assert sha is not None
+    store.git.auto_commit.assert_called_once()
+    message = store.git.auto_commit.call_args.args[0]
+    assert message.startswith("dream: periodic memory consolidation\n\n")
+    assert "Research notes" in message
+
+
 @pytest.fixture
 def mock_paths():
     """Mock config/workspace paths for test isolation."""
@@ -218,6 +248,20 @@ def test_onboard_existing_config_refresh(mock_paths):
     assert (workspace_dir / "AGENTS.md").exists()
 
 
+def test_onboard_existing_config_refresh_non_interactive(mock_paths):
+    """Config exists, user specifies --refresh — should refresh non-interactively (no prompt)."""
+    config_file, workspace_dir, _ = mock_paths
+    config_file.write_text('{"existing": true}')
+
+    result = runner.invoke(app, ["onboard", "--refresh"])
+
+    assert result.exit_code == 0
+    assert "Config already exists" not in result.stdout
+    assert "existing values preserved" in result.stdout
+    assert workspace_dir.exists()
+    assert (workspace_dir / "AGENTS.md").exists()
+
+
 def test_onboard_existing_config_overwrite(mock_paths):
     """Config exists, user confirms overwrite — should reset to defaults."""
     config_file, workspace_dir, _ = mock_paths
@@ -261,6 +305,7 @@ def test_onboard_help_shows_workspace_and_config_options():
     assert "--config" in stripped_output
     assert "-c" in stripped_output
     assert "--wizard" in stripped_output
+    assert "--refresh" in stripped_output
     assert "--dir" not in stripped_output
 
 
@@ -1652,9 +1697,15 @@ def test_webui_yes_creates_config_and_enables_local_websocket(
     assert websocket["host"] == "127.0.0.1"
     assert websocket["port"] == 8899
     assert websocket["websocketRequiresToken"] is True
+    assert isinstance(websocket["tokenIssueSecret"], str)
+    assert len(websocket["tokenIssueSecret"]) >= 32
     assert data["agents"]["defaults"]["workspace"] == str(workspace)
     assert seen["templates"] == workspace
     assert seen["gateway_kwargs"] == {"port": 18888, "open_browser_url": None}
+    compact_output = re.sub(r"\s+", " ", _strip_ansi(result.stdout))
+    assert "bootstrap secret was generated" in compact_output
+    assert "channels.websocket.tokenIssueSecret" in compact_output
+    assert "rerun without --no-open" in compact_output
 
 
 def test_webui_yes_refuses_missing_provider_setup(monkeypatch, tmp_path: Path) -> None:
@@ -1729,7 +1780,85 @@ def test_webui_background_starts_runtime_and_opens_browser(monkeypatch, tmp_path
     assert options.port == 18889
     assert options.config_path == str(config_file.resolve(strict=False))
     assert options.workspace == str(workspace.resolve(strict=False))
-    assert seen["opened_url"] == "http://127.0.0.1:8765"
+    opened_url = seen["opened_url"]
+    assert isinstance(opened_url, str)
+    assert opened_url.startswith("http://127.0.0.1:8765/#/?bootstrapSecret=")
+    assert "bootstrapSecret=<redacted>" in compact_output
+    assert "bootstrapSecret=" in opened_url
+
+
+def test_webui_background_restarts_when_config_changes_and_gateway_is_running(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    from nanobot.gateway import GatewayStartOptions, GatewayStatus, RuntimeResult
+
+    config_file = tmp_path / "config.json"
+    workspace = tmp_path / "workspace"
+    config_file.write_text("{}")
+    seen: dict[str, object] = {}
+    _patch_webui_provider_ready(monkeypatch)
+    monkeypatch.setattr("nanobot.cli.commands.sync_workspace_templates", lambda _path: None)
+
+    def _status(options: GatewayStartOptions) -> GatewayStatus:
+        return GatewayStatus(
+            running=True,
+            pid=123,
+            state_path=tmp_path / "gateway.json",
+            log_path=tmp_path / "gateway.log",
+            port=options.port,
+            reason="running",
+        )
+
+    class _FakeRuntime:
+        def __init__(self, **kwargs) -> None:
+            seen["runtime_kwargs"] = kwargs
+
+        def start_background(self, options: GatewayStartOptions) -> RuntimeResult:
+            seen["start_options"] = options
+            return RuntimeResult(False, "gateway_already_running", _status(options))
+
+        def restart(self, options: GatewayStartOptions, *, timeout_s: int) -> RuntimeResult:
+            seen["restart_options"] = options
+            seen["restart_timeout"] = timeout_s
+            return RuntimeResult(True, "gateway_started_background", _status(options))
+
+    monkeypatch.setattr("nanobot.gateway.GatewayRuntime", _FakeRuntime)
+    monkeypatch.setattr(
+        "nanobot.cli.commands._open_webui_browser",
+        lambda url: seen.__setitem__("opened_url", url),
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "webui",
+            "--config",
+            str(config_file),
+            "--workspace",
+            str(workspace),
+            "--background",
+            "--gateway-port",
+            "18889",
+            "--yes",
+        ],
+    )
+
+    assert result.exit_code == 0
+    compact_output = _strip_ansi(result.stdout).replace("\n", " ")
+    assert "WebUI config changed; restarting the background gateway" in compact_output
+    assert "Gateway restarted in the background" in compact_output
+    assert "Gateway is already running" not in compact_output
+    options = seen["restart_options"]
+    assert isinstance(options, GatewayStartOptions)
+    assert options is seen["start_options"]
+    assert seen["restart_timeout"] == 20
+    assert options.port == 18889
+    assert options.config_path == str(config_file.resolve(strict=False))
+    assert options.workspace == str(workspace.resolve(strict=False))
+    opened_url = seen["opened_url"]
+    assert isinstance(opened_url, str)
+    assert opened_url.startswith("http://127.0.0.1:8765/#/?bootstrapSecret=")
 
 
 def _patch_serve_runtime(monkeypatch, config: Config, seen: dict[str, object]) -> None:
