@@ -120,13 +120,13 @@ See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the full two-branch model (`main`
 **把 origin 指向自己的 fork**
 ```bash
 git remote rename origin upstream
-git remote add origin git@github.com:lcfxybq/nanobot.git
+git remote add origin git@github.com:LCF-xybq/nanobot.git
 ```
 
 ```bash
 #验证
 git remote -v
-# origin    git@github.com:lcfxybq/nanobot.git  (你的 fork，日常推送)
+# origin    git@github.com:LCF-xybq/nanobot.git  (你的 fork，日常推送)
 # upstream  git@github.com:HKUDS/nanobot.git    (原仓库，同步上游更新)
 ```
 
