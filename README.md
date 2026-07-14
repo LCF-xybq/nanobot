@@ -82,11 +82,11 @@ Highlights:
 
 ## Recent Updates
 
-- **2026-06-21** Python SDK runtime controls, optional Keenable key, cleaner run hooks.
-- **2026-06-20** Telegram rich messages, safer SDK concurrency, smoother Quick Start.
-- **2026-06-19** Firecrawl app, OpenAI image edits, safer session deletion.
-- **2026-06-18** Feishu recovery, Keenable search, Mistral polish, workspace-aware git.
-- **2026-06-17** Default idle auto-compact, clearer `/dream`, macOS installer fixes.
+- **2026-07-12** Explicit `/goal` activation, safer runtime and workspace access.
+- **2026-07-11** Syntax-highlighted previews and diffs, queued prompts, safer edits.
+- **2026-07-10** Stable model routing, multiline CLI input, new automation guide.
+- **2026-07-09** Live file-edit diffs, safer localhost setup, Matrix image fixes.
+- **2026-07-08** Safer WebUI/API setup, onboard refresh, responsive prompt rail.
 
 For older updates, see the [release archive](./docs/release-archive.md) or [GitHub releases](https://github.com/HKUDS/nanobot/releases).
 
@@ -373,19 +373,6 @@ This project was started by [Xubin Ren](https://github.com/re-bin) as a personal
 <a href="https://github.com/HKUDS/nanobot/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=HKUDS/nanobot&max=100&columns=12&updated=20260210" alt="Contributors" />
 </a>
-
-
-## ⭐ Star History
-
-<div align="center">
-  <a href="https://star-history.com/#HKUDS/nanobot&Date">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=HKUDS/nanobot&type=Date&theme=dark" />
-      <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=HKUDS/nanobot&type=Date" />
-      <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=HKUDS/nanobot&type=Date" style="border-radius: 15px; box-shadow: 0 0 30px rgba(0, 217, 255, 0.3);" />
-    </picture>
-  </a>
-</div>
 
 <p align="center">
   <em> Thanks for visiting ✨ nanobot!</em><br><br>
