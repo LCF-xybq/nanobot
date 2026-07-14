@@ -169,11 +169,6 @@ export function Sidebar(props: SidebarProps) {
           onClick={props.onOpenAgri}
           icon={<Sprout className="h-4 w-4" />}
         />
-        <SidebarViewMenu
-          compact={collapsed}
-          view={props.viewState}
-          onUpdateView={props.onUpdateView}
-        />
         <SidebarActionButton
           collapsed={collapsed}
           label={t("sidebar.skills.title")}

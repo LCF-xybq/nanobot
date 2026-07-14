@@ -223,10 +223,6 @@ function shellViewForSettingsSection(section: SettingsSectionKey): ShellView {
   return "settings";
 }
 
-function isAlgoView(route: ShellRoute): boolean {
-  return route.view === "algo";
-}
-
 function fallbackRestartHash(hash: string): boolean {
   return !hash || hash === "/" || hash === "/new";
 }
