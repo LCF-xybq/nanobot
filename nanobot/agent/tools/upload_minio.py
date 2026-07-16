@@ -1,13 +1,4 @@
 """Compress a local folder into a zip and upload it to MinIO.
-
-Self-contained extension module (mirrors ``vision.py``): no edit to
-``nanobot/config/schema.py`` or ``nanobot/agent/loop.py``. Configuration is
-read directly from ``~/.nanobot/config.json`` under ``tools.minio_upload``.
-
-The minio SDK is imported lazily inside ``execute`` so that tool registration
-does not require the dependency. Install it in the bot env::
-
-    pip install minio
 """
 
 from __future__ import annotations
