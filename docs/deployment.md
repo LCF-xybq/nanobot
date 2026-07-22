@@ -62,6 +62,22 @@ Restart the deployed process after editing `config.json`. Long-running processes
 
 ### Docker Compose
 
+The default image preinstalls WhatsApp dependencies. To bake other enabled
+channels into an image (recommended for deployments without PyPI access), pass
+a comma-separated `NANOBOT_CHANNELS` build argument:
+
+```bash
+NANOBOT_CHANNELS=telegram,slack docker compose build
+```
+
+The image keeps nanobot in a virtual environment owned by its built-in non-root
+runtime user (UID 1000). If an enabled channel was not preinstalled, gateway
+startup can therefore install its manifest-declared dependencies. Rebuilding
+with `NANOBOT_CHANNELS` keeps that installation reproducible instead of relying
+on the container's writable layer. If you override the container with a
+different `--user`, bake every enabled channel into the image because that UID
+is not guaranteed write access to the virtual environment.
+
 ```bash
 docker compose run --rm nanobot-cli onboard   # first-time setup
 vim ~/.nanobot/config.json                     # add API keys
@@ -74,11 +90,31 @@ docker compose logs -f nanobot-gateway                   # view logs
 docker compose down                                      # stop
 ```
 
+The default Compose file drops all Linux capabilities and keeps Docker's default
+AppArmor/seccomp profiles enabled. If you explicitly set
+`"tools.exec.sandbox": "bwrap"` in `~/.nanobot/config.json`, add the bwrap
+override file when starting containers:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.bwrap.yml up -d nanobot-gateway
+docker compose -f docker-compose.yml -f docker-compose.bwrap.yml run --rm nanobot-cli agent -m "Hello!"
+```
+
+The override grants `CAP_SYS_ADMIN` and disables AppArmor/seccomp confinement for
+the container so bubblewrap can create its nested namespaces. Use it only when the
+bwrap sandbox is enabled.
+
 ### Docker
 
 ```bash
 # Build the image
 docker build -t nanobot .
+
+# Or preinstall a regular Python extra such as Bedrock support
+docker build --build-arg NANOBOT_EXTRAS=bedrock -t nanobot .
+
+# Or preinstall dependencies for a specific set of channels
+docker build --build-arg NANOBOT_CHANNELS=telegram,slack -t nanobot .
 
 # Initialize config (first time only)
 docker run -v ~/.nanobot:/home/nanobot/.nanobot --rm nanobot onboard
@@ -87,12 +123,17 @@ docker run -v ~/.nanobot:/home/nanobot/.nanobot --rm nanobot onboard
 vim ~/.nanobot/config.json
 
 # Run gateway (connects to enabled channels, e.g. Telegram/Discord/Mochat).
-# Mirrors the security caps and port mappings declared in docker-compose.yml:
-#   - `--cap-drop ALL --cap-add SYS_ADMIN` + unconfined apparmor/seccomp are required
-#     when `tools.exec.sandbox: "bwrap"` is enabled (bwrap needs CAP_SYS_ADMIN for
-#     user namespaces). Without them, `bwrap` exits with `clone3: Operation not permitted`.
-#   - `-p 8765:8765` exposes the WebSocket channel / WebUI alongside the gateway health
-#     endpoint on 18790.
+# `-p 8765:8765` exposes the WebSocket channel / WebUI alongside the gateway
+# health endpoint on 18790.
+docker run \
+  --cap-drop ALL \
+  -v ~/.nanobot:/home/nanobot/.nanobot \
+  -p 18790:18790 -p 8765:8765 \
+  nanobot gateway
+
+# If `tools.exec.sandbox: "bwrap"` is enabled, run with the extra permissions
+# bubblewrap needs for nested namespaces. Without them, `bwrap` may exit with
+# `clone3: Operation not permitted`.
 docker run \
   --cap-drop ALL --cap-add SYS_ADMIN \
   --security-opt apparmor=unconfined \

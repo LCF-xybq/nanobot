@@ -35,6 +35,7 @@ from nanobot.runtime_context import (
     RuntimeContextBlock,
     append_runtime_context,
 )
+from nanobot.session.manager import FILE_MAX_MESSAGES
 from nanobot.utils.llm_runtime import runtime_from_provider_snapshot
 
 
@@ -1206,6 +1207,27 @@ async def test_sessions_ingest_imports_transcript_without_running_model(tmp_path
 
 
 @pytest.mark.asyncio
+async def test_sessions_ingest_archives_overflow_at_persistence_boundary(tmp_path):
+    config_path = _write_config(tmp_path)
+    bot = Nanobot.from_config(config_path, workspace=tmp_path)
+
+    snapshot = await bot.sessions.ingest(
+        "sdk:overflow",
+        [
+            {"role": "user", "content": f"message-{index}"}
+            for index in range(FILE_MAX_MESSAGES + 1)
+        ],
+    )
+
+    assert len(snapshot.messages) == FILE_MAX_MESSAGES
+    assert snapshot.messages[0]["content"] == "message-1"
+    history = bot.memory.read_history(session_key="sdk:overflow")
+    assert len(history) == 1
+    assert "[RAW] 1 messages" in history[0]["content"]
+    assert "message-0" in history[0]["content"]
+
+
+@pytest.mark.asyncio
 async def test_sessions_ingest_validates_message_shape(tmp_path):
     config_path = _write_config(tmp_path)
     bot = Nanobot.from_config(config_path, workspace=tmp_path)
@@ -1239,6 +1261,29 @@ async def test_session_helpers_get_list_export_clear_delete_flush(tmp_path):
     assert bot.sessions.flush() >= 1
     assert bot.sessions.delete("sdk:first") is True
     assert bot.sessions.get("sdk:first") is None
+
+
+def test_session_helpers_read_live_session_outside_strong_cache(tmp_path):
+    config_path = _write_config(tmp_path)
+    bot = Nanobot.from_config(config_path, workspace=tmp_path)
+    sessions = bot._loop.sessions
+    sessions._max_cached_sessions = 1
+    active = sessions.get_or_create("sdk:active")
+    active.add_message("user", "persisted")
+    sessions.save(active)
+
+    sessions.save(sessions.get_or_create("sdk:other"))
+    active.add_message("assistant", "not saved yet")
+
+    visible = bot.sessions.get("sdk:active")
+    exported = bot.sessions.export("sdk:active")
+    assert visible is not None
+    assert exported is not None
+    assert [message["content"] for message in visible.messages] == [
+        "persisted",
+        "not saved yet",
+    ]
+    assert exported.messages == visible.messages
 
 
 @pytest.mark.asyncio
