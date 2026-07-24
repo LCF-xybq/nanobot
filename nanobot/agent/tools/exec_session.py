@@ -334,6 +334,34 @@ class ExecSessionManager:
             )
         return len(sessions)
 
+    async def terminate_by_owner(self, owner_session_key: str) -> int:
+        """Terminate all sessions owned by owner_session_key. Returns count."""
+        async with self._lock:
+            victims = []
+            for sid, s in list(self._sessions.items()):
+                if s.owner_session_key == owner_session_key:
+                    victims.append(self._sessions.pop(sid))
+        results = await asyncio.gather(
+            *(s.kill() for s in victims),
+            return_exceptions=True,
+        )
+        failures = [
+            (session, result)
+            for session, result in zip(victims, results, strict=True)
+            if isinstance(result, BaseException)
+        ]
+        if failures:
+            async with self._lock:
+                for session, _ in failures:
+                    self._sessions[session.session_id] = session
+            if len(failures) == 1:
+                raise failures[0][1]
+            raise BaseExceptionGroup(
+                "failed to terminate exec sessions by owner",
+                [result for _, result in failures],
+            )
+        return len(victims)
+
     async def _cleanup_locked(self) -> None:
         now = time.monotonic()
         stale = [
@@ -342,8 +370,9 @@ class ExecSessionManager:
             if now - session.last_access > self.idle_timeout
         ]
         for session_id in stale:
-            session = self._sessions.pop(session_id)
+            session = self._sessions[session_id]
             await session.kill()
+            self._sessions.pop(session_id, None)
 
     async def _spawn(
         self,
